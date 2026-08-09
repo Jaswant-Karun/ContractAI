@@ -61,8 +61,8 @@ exports.uploadDocument = async (req, res, next) => {
 // Async processing function
 const processDocumentPipeline = async (document, filePath, user) => {
   try {
-    // 1. Try dispatching to n8n webhook
-    const n8nResult = await triggerN8nDocumentAnalysis({
+    // 1. Optionally notify n8n webhook asynchronously (non-blocking)
+    triggerN8nDocumentAnalysis({
       documentId: document._id.toString(),
       companyId: user.companyId.toString(),
       userId: user._id.toString(),
@@ -70,45 +70,45 @@ const processDocumentPipeline = async (document, filePath, user) => {
       fileType: document.fileType,
       fileUrl: document.fileUrl,
       userEmail: user.email
+    }).catch(n8nErr => {
+      console.warn('[Document Pipeline]: n8n dispatch warning:', n8nErr.message);
     });
 
-    if (n8nResult.success && !n8nResult.fallback) {
-      console.log(`[Document Pipeline]: Handled by n8n webhook for document ${document._id}`);
-      return;
-    }
-
-    // 2. Direct backend AI processing fallback
-    console.log(`[Document Pipeline]: Executing backend text extraction for document ${document._id}`);
+    // 2. Execute text extraction & AI contract analysis engine
+    console.log(`[Document Pipeline]: Executing text extraction for document ${document._id} (${document.fileName})`);
     const extractedText = await extractTextFromDocument(filePath, document.fileType);
     
-    console.log(`[Document Pipeline]: Running Groq AI analysis engine for document ${document._id}`);
+    console.log(`[Document Pipeline]: Running AI contract analysis engine for document ${document._id}`);
     const aiAnalysis = await analyzeContractText(extractedText, document.fileName);
 
-    // Save Contract Analysis in MongoDB
-    const contract = await Contract.create({
-      companyId: user.companyId,
-      documentId: document._id,
-      uploadedBy: user._id,
-      contractTitle: aiAnalysis.contract_title,
-      contractType: aiAnalysis.contract_type,
-      parties: aiAnalysis.parties,
-      startDate: aiAnalysis.start_date ? new Date(aiAnalysis.start_date) : null,
-      expiryDate: aiAnalysis.expiry_date ? new Date(aiAnalysis.expiry_date) : null,
-      renewalDate: aiAnalysis.renewal_date ? new Date(aiAnalysis.renewal_date) : null,
-      renewalType: aiAnalysis.renewal_type || 'Manual',
-      noticePeriodDays: aiAnalysis.notice_period_days || 30,
-      contractValue: aiAnalysis.contract_value,
-      currency: aiAnalysis.currency || 'USD',
-      paymentTerms: aiAnalysis.payment_terms,
-      terminationClause: aiAnalysis.termination_clause,
-      keyObligations: aiAnalysis.key_obligations,
-      risks: aiAnalysis.risks,
-      riskLevel: aiAnalysis.risk_level,
-      importantDates: aiAnalysis.important_dates.map(d => ({ ...d, date: new Date(d.date) })),
-      summary: aiAnalysis.summary,
-      aiEvidence: aiAnalysis.evidence,
-      renewalStatus: 'Active'
-    });
+    // Check if contract already exists for this documentId
+    let contract = await Contract.findOne({ documentId: document._id });
+    if (!contract) {
+      contract = await Contract.create({
+        companyId: user.companyId,
+        documentId: document._id,
+        uploadedBy: user._id,
+        contractTitle: aiAnalysis.contract_title,
+        contractType: aiAnalysis.contract_type,
+        parties: aiAnalysis.parties,
+        startDate: aiAnalysis.start_date ? new Date(aiAnalysis.start_date) : null,
+        expiryDate: aiAnalysis.expiry_date ? new Date(aiAnalysis.expiry_date) : null,
+        renewalDate: aiAnalysis.renewal_date ? new Date(aiAnalysis.renewal_date) : null,
+        renewalType: aiAnalysis.renewal_type || 'Manual',
+        noticePeriodDays: aiAnalysis.notice_period_days || 30,
+        contractValue: aiAnalysis.contract_value,
+        currency: aiAnalysis.currency || 'USD',
+        paymentTerms: aiAnalysis.payment_terms,
+        terminationClause: aiAnalysis.termination_clause,
+        keyObligations: aiAnalysis.key_obligations,
+        risks: aiAnalysis.risks,
+        riskLevel: aiAnalysis.risk_level,
+        importantDates: (aiAnalysis.important_dates || []).map(d => ({ ...d, date: new Date(d.date) })),
+        summary: aiAnalysis.summary,
+        aiEvidence: aiAnalysis.evidence,
+        renewalStatus: 'Active'
+      });
+    }
 
     // Update document status
     document.status = 'completed';

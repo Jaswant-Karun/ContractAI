@@ -56,7 +56,7 @@ export const Dropzone = ({ onFileSelect, acceptedTypes = ['.pdf', '.docx', '.doc
           type="file"
           ref={fileInputRef}
           style={{ display: 'none' }}
-          accept=".pdf,.docx,.doc"
+          accept=".pdf,.docx,.doc,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={(e) => e.target.files && validateAndSelect(e.target.files[0])}
         />
         <div style={{ display: 'inline-flex', width: 64, height: 64, borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>

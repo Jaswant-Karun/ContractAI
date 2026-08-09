@@ -21,14 +21,8 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   const allowedExts = ['.pdf', '.docx', '.doc'];
   const ext = path.extname(file.originalname).toLowerCase();
-  
-  const allowedMimeTypes = [
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword'
-  ];
 
-  if (allowedExts.includes(ext) && (allowedMimeTypes.includes(file.mimetype) || file.mimetype === 'application/octet-stream')) {
+  if (allowedExts.includes(ext)) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type. Only PDF and DOCX documents are permitted.'), false);

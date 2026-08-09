@@ -14,36 +14,62 @@ export const UploadPage = () => {
   const handleFileSelect = async (selectedFile) => {
     setFile(selectedFile);
     setStatusState('uploading');
-    setUploadProgress(10);
+    setUploadProgress(15);
 
     try {
-      // 1. Upload to Backend API
+      // 1. Upload file to Backend API
       const res = await documentService.uploadDocument(selectedFile, (progress) => {
-        setUploadProgress(Math.min(progress, 70));
+        setUploadProgress(Math.min(Math.round(progress * 0.6), 60));
       });
 
       if (res.success && res.data?.documentId) {
+        const docId = res.data.documentId;
         setStatusState('extracting');
-        setUploadProgress(80);
+        setUploadProgress(70);
 
-        // Simulate step status transitions while server processes AI in background
-        setTimeout(() => {
-          setStatusState('analyzing');
-          setUploadProgress(90);
-        }, 1500);
+        // 2. Poll Document status until server pipeline completes
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max timeout
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const docRes = await documentService.getDocumentById(docId);
+            const doc = docRes.data;
 
-        setTimeout(() => {
-          setStatusState('saving');
-          setUploadProgress(100);
-        }, 3000);
+            if (doc.status === 'completed') {
+              clearInterval(pollInterval);
+              setStatusState('saving');
+              setUploadProgress(95);
 
-        setTimeout(() => {
-          setStatusState('completed');
-          // Redirect to Contract Repository or Contract details after success
-          setTimeout(() => {
-            navigate('/contracts');
-          }, 1200);
-        }, 4200);
+              setTimeout(() => {
+                setStatusState('completed');
+                setUploadProgress(100);
+                setTimeout(() => {
+                  navigate('/contracts');
+                }, 1000);
+              }, 600);
+            } else if (doc.status === 'failed') {
+              clearInterval(pollInterval);
+              setStatusState('failed');
+              setErrorMessage(doc.errorMessage || 'Document processing failed.');
+            } else {
+              // Still processing
+              if (attempts > 5) setStatusState('analyzing');
+              setUploadProgress(prev => Math.min(prev + 2, 90));
+            }
+          } catch (err) {
+            // Ignore temporary polling errors
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            // Fall back gracefully to completed and navigate
+            setStatusState('completed');
+            setUploadProgress(100);
+            setTimeout(() => navigate('/contracts'), 800);
+          }
+        }, 1000);
+
       } else {
         setStatusState('failed');
         setErrorMessage(res.message || 'Upload failed.');
