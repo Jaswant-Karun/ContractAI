@@ -1,0 +1,48 @@
+{
+  "name": "ContractIQ - Renewal Monitoring & Email Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/webhooks/n8n/reminder-triggered",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"action\": \"trigger_renewal_check\", \"timestamp\": \"{{ $now.toISOString() }}\" }",
+        "options": {}
+      },
+      "name": "Trigger Server-Side Renewal Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [340, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (6h)": {
+      "main": [[{ "node": "Trigger Server-Side Renewal Engine", "type": "main", "index": 0 }]]
+    }
+  }
+}

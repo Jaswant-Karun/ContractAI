@@ -1,0 +1,33 @@
+{
+  "name": "ContractIQ - Reports & Google Sheets Export",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contractiq-report",
+        "options": {}
+      },
+      "name": "Report Sync Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "YOUR_GOOGLE_SHEET_ID_HERE",
+        "range": "Contracts!A:O",
+        "options": {}
+      },
+      "name": "Append to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [340, 300]
+    }
+  ],
+  "connections": {
+    "Report Sync Webhook": {
+      "main": [[{ "node": "Append to Google Sheet", "type": "main", "index": 0 }]]
+    }
+  }
+}

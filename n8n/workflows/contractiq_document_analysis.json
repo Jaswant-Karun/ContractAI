@@ -1,0 +1,99 @@
+{
+  "name": "ContractIQ - Document AI Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contractiq-analyze",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.fileUrl }}",
+        "responseFormat": "file",
+        "options": {}
+      },
+      "name": "Download Contract Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "data"
+      },
+      "name": "Extract Document Text",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.GROQ_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3-70b-8192\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Extract contract metadata, dates, obligations, and severity-rated risks into structured JSON format matching schema.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.text }}\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {}
+      },
+      "name": "Groq AI Analysis Engine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/webhooks/n8n/analysis-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"documentId\": \"{{ $('Webhook Trigger').item.json.body.documentId }}\",\n  \"companyId\": \"{{ $('Webhook Trigger').item.json.body.companyId }}\",\n  \"userId\": \"{{ $('Webhook Trigger').item.json.body.userId }}\",\n  \"analysisData\": {{ $json.choices[0].message.content }},\n  \"status\": \"completed\"\n}",
+        "options": {}
+      },
+      "name": "Callback to ContractIQ API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [980, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Download Contract Document", "type": "main", "index": 0 }]]
+    },
+    "Download Contract Document": {
+      "main": [[{ "node": "Extract Document Text", "type": "main", "index": 0 }]]
+    },
+    "Extract Document Text": {
+      "main": [[{ "node": "Groq AI Analysis Engine", "type": "main", "index": 0 }]]
+    },
+    "Groq AI Analysis Engine": {
+      "main": [[{ "node": "Callback to ContractIQ API", "type": "main", "index": 0 }]]
+    }
+  }
+}
