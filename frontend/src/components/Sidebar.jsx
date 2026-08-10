@@ -10,7 +10,19 @@ import {
   Users,
   Settings,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Brain,
+  MessageSquare,
+  AlertTriangle,
+  FileCheck,
+  Search,
+  GitCompare,
+  Building2,
+  CheckSquare,
+  Workflow,
+  History,
+  TrendingUp,
+  RotateCw
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -52,50 +64,106 @@ export const Sidebar = ({ isMobileOpen, onCloseMobile }) => {
         </NavLink>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" style={{ overflowY: 'auto', paddingRight: 4 }}>
+        {/* OVERVIEW GROUP */}
         <div className="nav-group">
-          <div className="nav-group-label">Core Platform</div>
+          <div className="nav-group-label">Overview</div>
           <NavLink to="/dashboard" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
             <LayoutDashboard size={18} />
-            <span>Dashboard</span>
+            <span>Executive Dashboard</span>
           </NavLink>
+          <NavLink to="/analytics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <TrendingUp size={18} />
+            <span>Contract Analytics</span>
+          </NavLink>
+        </div>
 
+        {/* CONTRACTS GROUP */}
+        <div className="nav-group">
+          <div className="nav-group-label">Contracts</div>
           <NavLink to="/contracts" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
             <FileText size={18} />
-            <span>Contracts</span>
+            <span>Contract Repository</span>
           </NavLink>
-
           <NavLink to="/upload" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
             <Upload size={18} />
-            <span>Upload Contract</span>
+            <span>Upload & Analyze</span>
           </NavLink>
-
+          <NavLink to="/renewals" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <RotateCw size={18} />
+            <span>Renewal Center</span>
+          </NavLink>
           <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
             <Calendar size={18} />
             <span>Renewal Calendar</span>
           </NavLink>
+          <NavLink to="/obligations" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <CheckSquare size={18} />
+            <span>Obligations & Tasks</span>
+          </NavLink>
         </div>
 
+        {/* INTELLIGENCE GROUP */}
         <div className="nav-group">
           <div className="nav-group-label">Intelligence</div>
-          <NavLink to="/notifications" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
-            <Bell size={18} />
-            <span>Notifications</span>
+          <NavLink to="/analysis" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Brain size={18} />
+            <span>AI Contract Analysis</span>
           </NavLink>
-
-          <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
-            <BarChart2 size={18} />
-            <span>Reports & Export</span>
+          <NavLink to="/chat" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <MessageSquare size={18} />
+            <span>AI Contract Chat</span>
+          </NavLink>
+          <NavLink to="/risks" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <AlertTriangle size={18} />
+            <span>Risk Intelligence</span>
+          </NavLink>
+          <NavLink to="/clauses" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <FileCheck size={18} />
+            <span>Clause Intelligence</span>
+          </NavLink>
+          <NavLink to="/evidence" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Search size={18} />
+            <span>Evidence Explorer</span>
+          </NavLink>
+          <NavLink to="/comparison" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <GitCompare size={18} />
+            <span>Contract Comparison</span>
+          </NavLink>
+          <NavLink to="/counterparties" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Building2 size={18} />
+            <span>Counterparty Intelligence</span>
           </NavLink>
         </div>
 
+        {/* OPERATIONS GROUP */}
+        <div className="nav-group">
+          <div className="nav-group-label">Operations</div>
+          <NavLink to="/notifications" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Bell size={18} />
+            <span>Notifications & Alerts</span>
+          </NavLink>
+          <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <BarChart2 size={18} />
+            <span>Reports & Exports</span>
+          </NavLink>
+          <NavLink to="/automations" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Workflow size={18} />
+            <span>Automation Center</span>
+          </NavLink>
+        </div>
+
+        {/* ADMINISTRATION GROUP */}
         <div className="nav-group">
           <div className="nav-group-label">Administration</div>
-          <NavLink to="/team" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
-            <Users size={18} />
-            <span>Team Management</span>
+          <NavLink to="/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <History size={18} />
+            <span>Audit & Activity Log</span>
           </NavLink>
-
+          <NavLink to="/workspace" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Users size={18} />
+            <span>Workspace Management</span>
+          </NavLink>
           <NavLink to="/settings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
             <Settings size={18} />
             <span>Settings</span>

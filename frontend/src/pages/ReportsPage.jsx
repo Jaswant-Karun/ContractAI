@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Download, FileSpreadsheet } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { Download, FileSpreadsheet, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
+  Cell, PieChart, Pie
+} from 'recharts';
 import { reportService } from '../services/reportService';
 import { StatCard } from '../components/StatCard';
-import { Button } from '../components/Button';
-import { Skeleton, ErrorState } from '../components/Skeleton';
+import { PageHeader } from '../components/PageHeader';
+import { Skeleton } from '../components/Skeleton';
+import { ErrorState } from '../components/ErrorState';
 
 export const ReportsPage = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const [data, setData]           = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [isExporting, setExport]  = useState(false);
 
   const fetchReports = async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await reportService.getReports();
-      if (res.success) {
-        setData(res.data);
-      }
+      if (res.success) setData(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load report analytics.');
     } finally {
@@ -27,72 +29,88 @@ export const ReportsPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
+  useEffect(() => { fetchReports(); }, []);
 
   const handleExportCSV = async () => {
     try {
-      setIsExporting(true);
+      setExport(true);
       await reportService.exportCSV();
-    } catch (e) {
-      alert('Failed to generate CSV export.');
+    } catch {
+      alert('Failed to generate CSV export. Please try again.');
     } finally {
-      setIsExporting(false);
+      setExport(false);
     }
   };
 
-  if (loading) {
-    return <Skeleton height="350px" />;
-  }
+  if (loading) return <div style={{ padding: '1.5rem' }}><Skeleton height="350px" /></div>;
+  if (error)   return <ErrorState message={error} onRetry={fetchReports} />;
 
-  if (error) {
-    return <ErrorState message={error} onRetry={fetchReports} />;
-  }
-
-  const { summary, riskDistribution, statusDistribution } = data || {};
-
-  const RISK_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'];
+  const { summary = {}, riskDistribution = [], statusDistribution = [] } = data || {};
+  const RISK_COLORS   = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'];
   const STATUS_COLORS = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Analytics & Export Reports</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-            Portfolio-wide intelligence metrics prepared for executive reporting and Google Sheets sync.
-          </p>
-        </div>
+    <div style={{ padding: '1.5rem', maxWidth: 1400, margin: '0 auto' }}>
+      <PageHeader
+        title="Reports & Exports"
+        subtitle="Portfolio-wide intelligence prepared for executive reporting and Google Sheets sync."
+        breadcrumbs={[{ label: 'Reports & Exports' }]}
+        actions={
+          <button
+            className="btn btn-primary"
+            onClick={handleExportCSV}
+            disabled={isExporting}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Download size={16} />
+            {isExporting ? 'Generating…' : 'Export CSV'}
+          </button>
+        }
+      />
 
-        <Button variant="primary" icon={Download} onClick={handleExportCSV} disabled={isExporting}>
-          {isExporting ? 'Generating CSV...' : 'Export Excel / CSV'}
-        </Button>
+      {/* Summary KPI row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+        <StatCard
+          title="Total Portfolio"
+          value={summary.totalContracts}
+          icon={FileSpreadsheet}
+          variant="primary"
+        />
+        <StatCard
+          title="Active Agreements"
+          value={summary.activeContracts}
+          icon={TrendingUp}
+          variant="success"
+        />
+        <StatCard
+          title="Expiring Soon"
+          value={summary.expiringSoon}
+          icon={Clock}
+          variant="warning"
+        />
+        <StatCard
+          title="Critical & High Risk"
+          value={(summary.highRisk || 0) + (summary.criticalRisk || 0)}
+          icon={AlertTriangle}
+          variant="danger"
+        />
       </div>
 
-      {/* Summary Stat Cards */}
-      <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <StatCard label="Total Portfolio" value={summary?.totalContracts} icon={FileSpreadsheet} color="var(--primary)" bg="var(--primary-light)" />
-        <StatCard label="Active Agreements" value={summary?.activeContracts} color="var(--success)" bg="var(--success-light)" />
-        <StatCard label="Expiring Soon" value={summary?.expiringSoon} color="var(--warning)" bg="var(--warning-light)" />
-        <StatCard label="Critical & High Risk" value={summary?.highRisk + summary?.criticalRisk} color="var(--danger)" bg="var(--danger-light)" />
-      </div>
-
-      {/* Charts Row */}
-      <div className="dashboard-charts-grid">
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Risk Exposure Breakdown</h3>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={riskDistribution}>
                 <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} />
                 <YAxis allowDecimals={false} stroke="var(--text-secondary)" fontSize={12} />
                 <Tooltip />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                  {riskDistribution?.map((entry, index) => (
-                    <Cell key={`bar-${index}`} fill={RISK_COLORS[index % RISK_COLORS.length]} />
+                  {riskDistribution.map((_, i) => (
+                    <Cell key={i} fill={RISK_COLORS[i % RISK_COLORS.length]} />
                   ))}
                 </Bar>
               </BarChart>
@@ -104,21 +122,19 @@ export const ReportsPage = () => {
           <div className="card-header">
             <h3 className="card-title">Contract Lifecycle Status</h3>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={statusDistribution}
                   dataKey="count"
                   nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  innerRadius={45}
+                  cx="50%" cy="50%"
+                  outerRadius={90} innerRadius={50}
                   label={({ name, count }) => `${name}: ${count}`}
                 >
-                  {statusDistribution?.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
+                  {statusDistribution.map((_, i) => (
+                    <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />

@@ -4,7 +4,9 @@ import { Bell, CheckCheck, FileText, Clock, AlertTriangle } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 import { NotificationContext } from '../context/NotificationContext';
 import { Button } from '../components/Button';
-import { Skeleton, EmptyState, ErrorState } from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 
 export const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);

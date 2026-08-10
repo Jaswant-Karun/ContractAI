@@ -16,8 +16,7 @@ export const Header = ({ title, onToggleMobileSidebar }) => {
       <div className="header-left">
         <button className="header-icon-btn mobile-only" onClick={onToggleMobileSidebar} style={{ display: 'none' }}>
           <Menu size={20} />
-        </button>
-        <h1 className="header-title">{title}</h1>
+        </button>        <h1 className="header-title">{title}</h1>
       </div>
 
       <div className="header-actions">

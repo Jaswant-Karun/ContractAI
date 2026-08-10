@@ -3,7 +3,8 @@ import { Save, Bell, Shield, Building, User as UserIcon } from 'lucide-react';
 import { settingsService } from '../services/settingsService';
 import { Button } from '../components/Button';
 import { Toast } from '../components/Toast';
-import { Skeleton, ErrorState } from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
+import { ErrorState } from '../components/ErrorState';
 
 export const SettingsPage = () => {
   const [profile, setProfile] = useState({ name: '', email: '', role: '' });

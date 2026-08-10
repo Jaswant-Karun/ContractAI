@@ -29,6 +29,14 @@ const documentSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    filePath: {
+      type: String,
+      default: null   // absolute server-side path for text extraction
+    },
+    mimeType: {
+      type: String,
+      default: null   // duplicate of fileType, kept for compatibility
+    },
     status: {
       type: String,
       enum: ['uploaded', 'processing', 'completed', 'failed'],

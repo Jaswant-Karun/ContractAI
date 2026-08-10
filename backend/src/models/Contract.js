@@ -108,6 +108,23 @@ const contractSchema = new mongoose.Schema(
       default: null
     },
     aiEvidence: [evidenceSchema],
+    department: { type: String, default: 'General', index: true },
+    counterparty: { type: String, default: 'Counterparty', index: true },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    tags: [{ type: String }],
+    recommendations: [{ type: String }],
+    clauses: [{
+      clauseType: { type: String, required: true },
+      title: { type: String },
+      text: { type: String },
+      risk: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], default: 'Low' },
+      evidenceQuote: { type: String },
+      recommendation: { type: String }
+    }],
+    annualValue: { type: Number, default: null },
+    paymentFrequency: { type: String, default: 'Annual' },
+    priceEscalation: { type: String, default: 'None' },
+    isArchived: { type: Boolean, default: false, index: true },
     renewalStatus: {
       type: String,
       enum: ['Processing', 'Active', 'Expiring Soon', 'Expired', 'Renewed'],

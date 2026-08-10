@@ -23,6 +23,8 @@ exports.uploadDocument = async (req, res, next) => {
       uploadedBy: req.user._id,
       fileName: originalname,
       fileType: mimetype,
+      mimeType: mimetype,
+      filePath: filePath,
       fileSize: size,
       fileUrl: fileUrl,
       status: 'processing'

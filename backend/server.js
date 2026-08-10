@@ -46,6 +46,21 @@ app.use('/api/team', require('./src/routes/teamRoutes'));
 app.use('/api/settings', require('./src/routes/settingsRoutes'));
 app.use('/api/webhooks', require('./src/routes/webhookRoutes'));
 
+// Extended Enterprise Routes
+app.use('/api/analysis', require('./src/routes/analysisRoutes'));
+app.use('/api/risks', require('./src/routes/riskRoutes'));
+app.use('/api/renewals', require('./src/routes/renewalRoutes'));
+app.use('/api/chat', require('./src/routes/chatRoutes'));
+app.use('/api/comparison', require('./src/routes/comparisonRoutes'));
+app.use('/api/clauses', require('./src/routes/clauseRoutes'));
+app.use('/api/evidence', require('./src/routes/evidenceRoutes'));
+app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
+app.use('/api/counterparties', require('./src/routes/counterpartyRoutes'));
+app.use('/api/obligations', require('./src/routes/obligationRoutes'));
+app.use('/api/automations', require('./src/routes/automationRoutes'));
+app.use('/api/audit', require('./src/routes/auditRoutes'));
+app.use('/api/workspace', require('./src/routes/workspaceRoutes'));
+
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route '${req.originalUrl}' not found.` });

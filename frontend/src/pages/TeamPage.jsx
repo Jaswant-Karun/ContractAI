@@ -3,7 +3,8 @@ import { UserPlus, Shield, Trash2, Mail } from 'lucide-react';
 import { teamService } from '../services/teamService';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
-import { Skeleton, ErrorState } from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
+import { ErrorState } from '../components/ErrorState';
 import { useAuth } from '../hooks/useAuth';
 
 export const TeamPage = () => {

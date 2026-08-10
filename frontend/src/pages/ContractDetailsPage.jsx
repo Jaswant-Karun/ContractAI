@@ -14,9 +14,11 @@ import {
   Info
 } from 'lucide-react';
 import { contractService } from '../services/contractService';
-import { StatusBadge, RiskBadge } from '../components/StatusBadge';
+import { StatusBadge } from '../components/StatusBadge';
+import { RiskBadge } from '../components/RiskBadge';
 import { Button } from '../components/Button';
-import { Skeleton, ErrorState } from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
+import { ErrorState } from '../components/ErrorState';
 
 export const ContractDetailsPage = () => {
   const { id } = useParams();

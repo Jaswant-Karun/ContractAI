@@ -9,18 +9,35 @@ import { useAuth } from './hooks/useAuth';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
-// Pages
+// Public & Auth Pages
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ContractListPage } from './pages/ContractListPage';
-import { ContractDetailsPage } from './pages/ContractDetailsPage';
-import { UploadPage } from './pages/UploadPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { ReportsPage } from './pages/ReportsPage';
+
+// 20 Enterprise Main Application Pages
+import { DashboardPage } from './pages/DashboardPage'; // 1. Executive Dashboard
+import { ContractListPage } from './pages/ContractListPage'; // 2. Contract Repository
+import { UploadPage } from './pages/UploadPage'; // 3. Upload & Analyze
+import { ContractDetailsPage } from './pages/ContractDetailsPage'; // 4. Contract Details
+import { AIAnalysisPage } from './pages/AIAnalysisPage'; // 5. AI Contract Analysis
+import { RiskIntelligencePage } from './pages/RiskIntelligencePage'; // 6. Risk Intelligence
+import { CalendarPage } from './pages/CalendarPage'; // 7. Renewal Calendar
+import { RenewalCenterPage } from './pages/RenewalCenterPage'; // 8. Renewal Center
+import { NotificationsPage } from './pages/NotificationsPage'; // 9. Notifications & Alerts
+import { ContractChatPage } from './pages/ContractChatPage'; // 10. AI Contract Chat
+import { ContractComparisonPage } from './pages/ContractComparisonPage'; // 11. Contract Comparison
+import { ClauseIntelligencePage } from './pages/ClauseIntelligencePage'; // 12. Clause Intelligence
+import { EvidenceExplorerPage } from './pages/EvidenceExplorerPage'; // 13. Evidence Explorer
+import { ContractAnalyticsPage } from './pages/ContractAnalyticsPage'; // 14. Contract Analytics
+import { CounterpartyIntelligencePage } from './pages/CounterpartyIntelligencePage'; // 15. Counterparty Intelligence
+import { ObligationsPage } from './pages/ObligationsPage'; // 16. Obligations & Tasks
+import { ReportsPage } from './pages/ReportsPage'; // 17. Reports & Exports
+import { AutomationCenterPage } from './pages/AutomationCenterPage'; // 18. Automation Center
+import { AuditLogPage } from './pages/AuditLogPage'; // 19. Audit & Activity Log
+import { WorkspacePage } from './pages/WorkspacePage'; // 20. Workspace Management
+
+// Preserved settings & team management
 import { TeamPage } from './pages/TeamPage';
 import { SettingsPage } from './pages/SettingsPage';
 
@@ -31,7 +48,7 @@ const ProtectedRoute = ({ children }) => {
   if (isLoading) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
-        <div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Loading ContractIQ Platform...</div>
+        <div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Loading ContractIQ Enterprise Platform...</div>
       </div>
     );
   }
@@ -59,7 +76,7 @@ export default function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
 
-            {/* Protected Dashboard Layout Routes */}
+            {/* Protected Dashboard Layout Routes for 20 Enterprise Pages */}
             <Route
               element={
                 <ProtectedRoute>
@@ -71,9 +88,23 @@ export default function App() {
               <Route path="/contracts" element={<ContractListPage />} />
               <Route path="/contracts/:id" element={<ContractDetailsPage />} />
               <Route path="/upload" element={<UploadPage />} />
+              <Route path="/analysis" element={<AIAnalysisPage />} />
+              <Route path="/analysis/:contractId" element={<AIAnalysisPage />} />
+              <Route path="/risks" element={<RiskIntelligencePage />} />
               <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/renewals" element={<RenewalCenterPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/chat" element={<ContractChatPage />} />
+              <Route path="/comparison" element={<ContractComparisonPage />} />
+              <Route path="/clauses" element={<ClauseIntelligencePage />} />
+              <Route path="/evidence" element={<EvidenceExplorerPage />} />
+              <Route path="/analytics" element={<ContractAnalyticsPage />} />
+              <Route path="/counterparties" element={<CounterpartyIntelligencePage />} />
+              <Route path="/obligations" element={<ObligationsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/automations" element={<AutomationCenterPage />} />
+              <Route path="/audit" element={<AuditLogPage />} />
+              <Route path="/workspace" element={<WorkspacePage />} />
               <Route path="/team" element={<TeamPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

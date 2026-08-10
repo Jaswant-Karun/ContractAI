@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { contractService } from '../services/contractService';
-import { Skeleton, ErrorState } from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
+import { ErrorState } from '../components/ErrorState';
 
 export const CalendarPage = () => {
   const [events, setEvents] = useState([]);

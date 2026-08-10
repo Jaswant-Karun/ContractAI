@@ -7,6 +7,22 @@ const companySchema = new mongoose.Schema(
       required: [true, 'Company name is required'],
       trim: true
     },
+    domain: {
+      type: String,
+      default: ''
+    },
+    industry: {
+      type: String,
+      default: 'Technology'
+    },
+    plan: {
+      type: String,
+      default: 'Enterprise Tier'
+    },
+    maxContracts: {
+      type: Number,
+      default: 1000
+    },
     settings: {
       emailNotifications: {
         type: Boolean,

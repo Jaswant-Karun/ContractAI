@@ -1,332 +1,330 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Search,
-  Plus,
-  Eye,
-  Edit2,
-  Trash2,
-  Download
-} from 'lucide-react';
 import { contractService } from '../services/contractService';
-import { StatusBadge, RiskBadge } from '../components/StatusBadge';
-import { Button } from '../components/Button';
-import { ConfirmDialog, Modal } from '../components/Modal';
-import { Skeleton, EmptyState, ErrorState } from '../components/Skeleton';
-import { useAuth } from '../hooks/useAuth';
+import { PageHeader } from '../components/PageHeader';
+import { FilterPanel } from '../components/FilterPanel';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
+import { Skeleton } from '../components/Skeleton';
+import { StatusBadge } from '../components/StatusBadge';
+import { RiskBadge } from '../components/RiskBadge';
+import {
+  FileText,
+  Grid,
+  List,
+  Upload,
+  Download,
+  Archive,
+  UserCheck,
+  Trash2,
+  Calendar,
+  DollarSign
+} from 'lucide-react';
 
 export const ContractListPage = () => {
   const [contracts, setContracts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Filters & Pagination
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [riskFilter, setRiskFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
-  // Action Modals State
-  const [deleteId, setDeleteId] = useState(null);
-  const [editContract, setEditContract] = useState(null);
-
-  const { user } = useAuth();
+  const [filters, setFilters] = useState({ status: '', risk: '', type: '', department: '' });
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const fetchContracts = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
       const res = await contractService.getContracts({
         search,
-        status: statusFilter,
-        risk: riskFilter,
-        type: typeFilter,
-        page,
-        limit: 10
+        status: filters.status,
+        risk: filters.risk,
+        type: filters.type,
+        department: filters.department,
+        page: pagination.page,
+        limit: pagination.limit
       });
       if (res.success) {
         setContracts(res.data);
-        setTotalPages(res.pagination.pages || 1);
+        setPagination(res.pagination || { page: 1, limit: 10, total: res.data.length, pages: 1 });
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load contracts.');
+      setError(err.response?.data?.message || 'Failed to fetch contracts repository.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchContracts();
-  }, [search, statusFilter, riskFilter, typeFilter, page]);
+  }, [search, filters, pagination.page]);
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteId) return;
-    try {
-      await contractService.deleteContract(deleteId);
-      setDeleteId(null);
-      fetchContracts();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete contract.');
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(contracts.map(c => c._id));
+    } else {
+      setSelectedIds([]);
     }
   };
 
-  const handleEditSave = async (e) => {
-    e.preventDefault();
-    if (!editContract) return;
-    try {
-      await contractService.updateContract(editContract._id, editContract);
-      setEditContract(null);
-      fetchContracts();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update contract.');
+  const handleSelectOne = (id) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
     }
   };
+
+  const handleBulkAction = async (action) => {
+    if (selectedIds.length === 0) return;
+    if (action === 'delete' && !window.confirm(`Are you sure you want to delete ${selectedIds.length} contracts?`)) {
+      return;
+    }
+    try {
+      await contractService.bulkOperations(action, selectedIds);
+      setSelectedIds([]);
+      fetchContracts();
+    } catch (err) {
+      alert('Bulk action failed: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleExportCSV = () => {
+    const csvRows = [
+      ['Contract Title', 'Counterparty', 'Type', 'Department', 'Start Date', 'Expiry Date', 'Status', 'Risk Level', 'Contract Value']
+    ];
+    contracts.forEach(c => {
+      csvRows.push([
+        `"${c.contractTitle}"`,
+        `"${c.counterparty || 'N/A'}"`,
+        `"${c.contractType}"`,
+        `"${c.department || 'General'}"`,
+        c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : 'N/A',
+        c.expiryDate ? new Date(c.expiryDate).toISOString().split('T')[0] : 'N/A',
+        c.renewalStatus,
+        c.riskLevel,
+        c.contractValue || 0
+      ]);
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contractiq_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const filterOptions = [
+    { key: 'status', label: 'All Statuses', values: ['Active', 'Expiring Soon', 'Expired', 'Renewed'] },
+    { key: 'risk', label: 'All Risks', values: ['Low', 'Medium', 'High', 'Critical'] },
+    { key: 'type', label: 'Contract Types', values: ['Commercial Agreement', 'Software License', 'Professional Services', 'Real Estate Lease', 'Vendor Agreement'] },
+    { key: 'department', label: 'Departments', values: ['General', 'Legal', 'Procurement', 'Engineering', 'Finance', 'Sales', 'HR'] }
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Top Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Contract Repository</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-            Centralized document database and automated intelligence scorecards.
-          </p>
-        </div>
-
-        <Button variant="primary" icon={Plus} onClick={() => navigate('/upload')}>
-          Upload Contract
-        </Button>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="table-toolbar">
-        <div className="table-search-box">
-          <Search size={16} color="var(--text-muted)" />
-          <input
-            type="text"
-            placeholder="Search contracts, parties, or summary..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
-        </div>
-
-        <div className="table-filters">
-          <select
-            className="form-select"
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            style={{ width: 140 }}
-          >
-            <option value="">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Expiring Soon">Expiring Soon</option>
-            <option value="Expired">Expired</option>
-            <option value="Renewed">Renewed</option>
-          </select>
-
-          <select
-            className="form-select"
-            value={riskFilter}
-            onChange={(e) => { setRiskFilter(e.target.value); setPage(1); }}
-            style={{ width: 130 }}
-          >
-            <option value="">All Risks</option>
-            <option value="Low">Low Risk</option>
-            <option value="Medium">Medium Risk</option>
-            <option value="High">High Risk</option>
-            <option value="Critical">Critical Risk</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Contracts Data Table */}
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: 24 }}>
-            <Skeleton height="40px" className="mb-2" />
-            <Skeleton height="40px" className="mb-2" />
-            <Skeleton height="40px" />
+    <div style={{ padding: '1.5rem', maxWidth: 1400, margin: '0 auto' }}>
+      <PageHeader
+        title="Contract Repository"
+        subtitle="Centralized management, search, and bulk operations for company contract assets."
+        breadcrumbs={[{ label: 'Contract Repository' }]}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleExportCSV}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={16} />
+              <span>Export CSV</span>
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/upload')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Upload size={16} />
+              <span>Upload Contract</span>
+            </button>
           </div>
-        ) : error ? (
-          <ErrorState message={error} onRetry={fetchContracts} />
-        ) : contracts.length === 0 ? (
-          <EmptyState
-            title="No Contracts Found"
-            message="No documents match your current filter parameters."
-            actionText="Upload Contract"
-            onAction={() => navigate('/upload')}
-          />
-        ) : (
-          <table className="data-table">
+        }
+      />
+
+      <FilterPanel
+        search={search}
+        onSearchChange={setSearch}
+        filters={filters}
+        onFilterChange={(k, v) => setFilters({ ...filters, [k]: v })}
+        filterOptions={filterOptions}
+        onReset={() => setFilters({ status: '', risk: '', type: '', department: '' })}
+      />
+
+      {/* TOOLBAR & VIEW TOGGLE */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {selectedIds.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: 'var(--bg-card)', padding: '4px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-color)' }}>
+                {selectedIds.length} Selected
+              </span>
+              <button className="btn btn-sm btn-secondary" onClick={() => handleBulkAction('archive')}>
+                <Archive size={14} /> Archive
+              </button>
+              <button className="btn btn-sm btn-danger" onClick={() => handleBulkAction('delete')}>
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, backgroundColor: 'var(--bg-card)', padding: 4, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <button
+            onClick={() => setViewMode('table')}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              backgroundColor: viewMode === 'table' ? 'var(--primary-color)' : 'transparent',
+              color: viewMode === 'table' ? '#fff' : 'var(--text-muted)',
+              cursor: 'pointer'
+            }}
+          >
+            <List size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode('grid')}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              backgroundColor: viewMode === 'grid' ? 'var(--primary-color)' : 'transparent',
+              color: viewMode === 'grid' ? '#fff' : 'var(--text-muted)',
+              cursor: 'pointer'
+            }}
+          >
+            <Grid size={16} />
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <Skeleton height="300px" />
+      ) : error ? (
+        <ErrorState message={error} onRetry={fetchContracts} />
+      ) : contracts.length === 0 ? (
+        <EmptyState
+          title="No Contracts Found"
+          description="No contracts match your search parameters. Try clearing filters or upload a new contract."
+          action={
+            <button className="btn btn-primary" onClick={() => navigate('/upload')}>
+              Upload Contract
+            </button>
+          }
+        />
+      ) : viewMode === 'table' ? (
+        /* TABLE VIEW */
+        <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
+          <table className="table" style={{ width: '100%', fontSize: '0.875rem' }}>
             <thead>
               <tr>
-                <th>Contract</th>
-                <th>Type</th>
+                <th style={{ width: 40 }}>
+                  <input type="checkbox" onChange={handleSelectAll} checked={selectedIds.length === contracts.length && contracts.length > 0} />
+                </th>
+                <th>Contract Title</th>
                 <th>Counterparty</th>
+                <th>Type</th>
+                <th>Department</th>
                 <th>Expiry Date</th>
-                <th>Notice Period</th>
-                <th>Days Remaining</th>
-                <th>Risk</th>
+                <th>Value</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>Risk</th>
               </tr>
             </thead>
             <tbody>
-              {contracts.map((c) => (
-                <tr key={c._id}>
-                  <td style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer' }} onClick={() => navigate(`/contracts/${c._id}`)}>
+              {contracts.map(c => (
+                <tr key={c._id} style={{ cursor: 'pointer' }}>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedIds.includes(c._id)} onChange={() => handleSelectOne(c._id)} />
+                  </td>
+                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }} onClick={() => navigate(`/contracts/${c._id}`)}>
                     {c.contractTitle}
                   </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{c.contractType}</td>
-                  <td style={{ color: 'var(--text-secondary)' }}>
-                    {(c.parties && c.parties[1]) || (c.parties && c.parties[0]) || 'N/A'}
+                  <td style={{ color: 'var(--text-secondary)' }} onClick={() => navigate(`/contracts/${c._id}`)}>
+                    {c.counterparty || (c.parties && c.parties[1]) || 'Counterparty'}
                   </td>
-                  <td>{c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : 'N/A'}</td>
-                  <td>{c.noticePeriodDays} days</td>
-                  <td>
-                    <span style={{ fontWeight: 700, color: (c.daysRemaining <= 30 && c.daysRemaining > 0) ? 'var(--warning)' : c.daysRemaining <= 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                      {c.daysRemaining !== null ? `${c.daysRemaining} days` : 'N/A'}
-                    </span>
+                  <td onClick={() => navigate(`/contracts/${c._id}`)}>{c.contractType}</td>
+                  <td onClick={() => navigate(`/contracts/${c._id}`)}>{c.department || 'General'}</td>
+                  <td onClick={() => navigate(`/contracts/${c._id}`)}>
+                    {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : 'N/A'}
                   </td>
-                  <td><RiskBadge level={c.riskLevel} /></td>
-                  <td><StatusBadge status={c.renewalStatus} /></td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                      <button className="header-icon-btn" title="View Analysis" onClick={() => navigate(`/contracts/${c._id}`)}>
-                        <Eye size={16} />
-                      </button>
-
-                      {(user?.role === 'Admin' || user?.role === 'Manager') && (
-                        <button className="header-icon-btn" title="Edit Contract" onClick={() => setEditContract(c)}>
-                          <Edit2 size={16} />
-                        </button>
-                      )}
-
-                      {c.documentId?.fileUrl && (
-                        <a href={c.documentId.fileUrl} target="_blank" rel="noreferrer" className="header-icon-btn" title="Download Document">
-                          <Download size={16} />
-                        </a>
-                      )}
-
-                      {user?.role === 'Admin' && (
-                        <button className="header-icon-btn" title="Delete Contract" style={{ color: 'var(--danger)' }} onClick={() => setDeleteId(c._id)}>
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
+                  <td onClick={() => navigate(`/contracts/${c._id}`)}>
+                    ${(c.contractValue || 0).toLocaleString()}
                   </td>
+                  <td onClick={() => navigate(`/contracts/${c._id}`)}><StatusBadge status={c.renewalStatus} /></td>
+                  <td onClick={() => navigate(`/contracts/${c._id}`)}><RiskBadge level={c.riskLevel} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-
-        {/* Pagination Bar */}
-        {!loading && !error && contracts.length > 0 && (
-          <div className="pagination-bar">
-            <span>Page {page} of {totalPages}</span>
-            <div className="pagination-controls">
-              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                Previous
-              </Button>
-              <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmDialog
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Contract Document"
-        message="Are you sure you want to delete this contract? This action will remove the document analysis and notifications permanently."
-      />
-
-      {/* Edit Contract Modal */}
-      <Modal
-        isOpen={!!editContract}
-        onClose={() => setEditContract(null)}
-        title="Edit Contract Details"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setEditContract(null)}>Cancel</Button>
-            <Button variant="primary" onClick={handleEditSave}>Save Changes</Button>
-          </>
-        }
-      >
-        {editContract && (
-          <form style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div className="form-group">
-              <label className="form-label">Contract Title</label>
-              <input
-                type="text"
-                className="form-input"
-                value={editContract.contractTitle || ''}
-                onChange={(e) => setEditContract({ ...editContract, contractTitle: e.target.value })}
-              />
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Contract Type</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editContract.contractType || ''}
-                  onChange={(e) => setEditContract({ ...editContract, contractType: e.target.value })}
-                />
+        </div>
+      ) : (
+        /* GRID VIEW */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+          {contracts.map(c => (
+            <div
+              key={c._id}
+              onClick={() => navigate(`/contracts/${c._id}`)}
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1.25rem',
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                <StatusBadge status={c.renewalStatus} />
+                <RiskBadge level={c.riskLevel} />
               </div>
-
-              <div className="form-group">
-                <label className="form-label">Notice Period (Days)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={editContract.noticePeriodDays || 30}
-                  onChange={(e) => setEditContract({ ...editContract, noticePeriodDays: parseInt(e.target.value) || 30 })}
-                />
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                {c.contractTitle}
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                {c.counterparty || 'Counterparty'} • {c.contractType}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)', paddingTop: 10 }}>
+                <span>Val: ${ (c.contractValue || 0).toLocaleString() }</span>
+                <span>Exp: {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : 'N/A'}</span>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Risk Level</label>
-                <select
-                  className="form-select"
-                  value={editContract.riskLevel || 'Low'}
-                  onChange={(e) => setEditContract({ ...editContract, riskLevel: e.target.value })}
-                >
-                  <option value="Low">Low Risk</option>
-                  <option value="Medium">Medium Risk</option>
-                  <option value="High">High Risk</option>
-                  <option value="Critical">Critical Risk</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Renewal Status</label>
-                <select
-                  className="form-select"
-                  value={editContract.renewalStatus || 'Active'}
-                  onChange={(e) => setEditContract({ ...editContract, renewalStatus: e.target.value })}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Expiring Soon">Expiring Soon</option>
-                  <option value="Expired">Expired</option>
-                  <option value="Renewed">Renewed</option>
-                </select>
-              </div>
-            </div>
-          </form>
-        )}
-      </Modal>
+      {/* PAGINATION */}
+      {pagination.pages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: '1.5rem' }}>
+          <button
+            disabled={pagination.page <= 1}
+            onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
+            className="btn btn-secondary btn-sm"
+          >
+            Previous
+          </button>
+          <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            Page {pagination.page} of {pagination.pages}
+          </span>
+          <button
+            disabled={pagination.page >= pagination.pages}
+            onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
+            className="btn btn-secondary btn-sm"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };
