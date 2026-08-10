@@ -5,43 +5,55 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "contractiq-analyze",
+        "responseMode": "responseNode",
         "options": {}
       },
+      "id": "node-webhook-trigger",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [100, 300]
     },
     {
       "parameters": {
+        "method": "GET",
         "url": "={{ $json.body.fileUrl }}",
-        "responseFormat": "file",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
       },
+      "id": "node-download-doc",
       "name": "Download Contract Document",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "typeVersion": 4.2,
       "position": [320, 300]
     },
     {
       "parameters": {
-        "operation": "pdf",
-        "binaryPropertyName": "data"
+        "operation": "text",
+        "options": {}
       },
-      "name": "Extract Document Text",
-      "type": "n8n-nodes-base.readBinaryFile",
+      "id": "node-extract-file",
+      "name": "Extract Text From File",
+      "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [540, 300]
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "https://api.groq.com/openai/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer {{ $env.GROQ_API_KEY }}"
+              "value": "=Bearer {{ $env.GROQ_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -50,17 +62,30 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"llama3-70b-8192\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Extract contract metadata, dates, obligations, and severity-rated risks into structured JSON format matching schema.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.text }}\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"model\": \"llama3-70b-8192\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are ContractIQ AI. Extract contract data into strict JSON format. Return ONLY valid JSON with these keys: contract_title, contract_type, parties (array), start_date (YYYY-MM-DD or null), expiry_date (YYYY-MM-DD or null), renewal_date (YYYY-MM-DD or null), renewal_type, notice_period_days (number or null), contract_value (number or null), currency, payment_terms, termination_clause, key_obligations (array of {party, description}), risks (array of {title, description, severity, evidence}), risk_level (Low/Medium/High/Critical), important_dates (array), summary, evidence (array of {field, value, evidenceQuote}).\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ $json.text.substring(0, 20000) }}\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
         "options": {}
       },
+      "id": "node-groq-analysis",
       "name": "Groq AI Analysis Engine",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "typeVersion": 4.2,
       "position": [760, 300]
     },
     {
       "parameters": {
+        "jsCode": "const groqResponse = $input.item.json;\nconst body = JSON.parse(groqResponse.choices[0].message.content);\nconst webhookData = $('Webhook Trigger').item.json.body;\n\nreturn {\n  json: {\n    documentId: webhookData.documentId,\n    companyId: webhookData.companyId,\n    userId: webhookData.userId,\n    analysisData: body,\n    status: 'completed'\n  }\n};"
+      },
+      "id": "node-parse-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
         "url": "http://localhost:5000/api/webhooks/n8n/analysis-result",
         "sendHeaders": true,
         "headerParameters": {
@@ -72,14 +97,27 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"documentId\": \"{{ $('Webhook Trigger').item.json.body.documentId }}\",\n  \"companyId\": \"{{ $('Webhook Trigger').item.json.body.companyId }}\",\n  \"userId\": \"{{ $('Webhook Trigger').item.json.body.userId }}\",\n  \"analysisData\": {{ $json.choices[0].message.content }},\n  \"status\": \"completed\"\n}",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
+      "id": "node-callback-api",
       "name": "Callback to ContractIQ API",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [980, 300]
+      "typeVersion": 4.2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"message\": \"Analysis pipeline completed\" }",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1420, 300]
     }
   ],
   "connections": {
@@ -87,13 +125,22 @@
       "main": [[{ "node": "Download Contract Document", "type": "main", "index": 0 }]]
     },
     "Download Contract Document": {
-      "main": [[{ "node": "Extract Document Text", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Extract Text From File", "type": "main", "index": 0 }]]
     },
-    "Extract Document Text": {
+    "Extract Text From File": {
       "main": [[{ "node": "Groq AI Analysis Engine", "type": "main", "index": 0 }]]
     },
     "Groq AI Analysis Engine": {
+      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Response": {
       "main": [[{ "node": "Callback to ContractIQ API", "type": "main", "index": 0 }]]
+    },
+    "Callback to ContractIQ API": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
     }
+  },
+  "settings": {
+    "executionOrder": "v1"
   }
 }
