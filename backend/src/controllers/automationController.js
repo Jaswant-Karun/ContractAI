@@ -10,25 +10,7 @@ exports.getAutomationStatus = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(15);
 
-    // Default status fallback if no logs recorded yet
-    if (logs.length === 0) {
-      const defaultWorkflows = [
-        { workflowName: 'Document AI Analysis Workflow', workflowType: 'Document AI Analysis', status: 'Active', executionTimeMs: 1450, details: 'n8n Webhook -> Groq Llama-3 extraction -> MongoDB' },
-        { workflowName: 'Renewal Expiry Engine', workflowType: 'Renewal Monitoring', status: 'Active', executionTimeMs: 820, details: 'Daily cron schedule -> Calculate days remaining -> Update status' },
-        { workflowName: '90/60/30-Day Alert Dispatcher', workflowType: '90-Day Reminder', status: 'Active', executionTimeMs: 540, details: 'SMTP email notifications sent to contract owners' },
-        { workflowName: 'Google Sheets & Report Sync', workflowType: 'Google Sheets Sync', status: 'Active', executionTimeMs: 1100, details: 'Sync portfolio CSV export to Google Drive / Sheets' },
-        { workflowName: 'Notification Retry Job', workflowType: 'Email Notification', status: 'Active', executionTimeMs: 320, details: 'Automated retry for failed email notifications' }
-      ];
 
-      for (const wf of defaultWorkflows) {
-        await AutomationLog.create({
-          companyId,
-          ...wf
-        });
-      }
-
-      logs = await AutomationLog.find({ companyId }).sort({ createdAt: -1 });
-    }
 
     const workflowsHealth = [
       { name: 'Document AI Analysis', type: 'Document AI Analysis', status: 'ACTIVE', lastExecution: 'Just now', n8nWebhook: process.env.N8N_DOCUMENT_ANALYSIS_WEBHOOK || 'http://localhost:5678/webhook/contractiq-analyze' },

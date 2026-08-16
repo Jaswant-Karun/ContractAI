@@ -92,89 +92,133 @@ const analyzeContractText = async (text, fileName) => {
 };
 
 const formatStructuredAnalysis = (data, fileName) => {
+  const cleanName = fileName ? fileName.replace(/\.[^/.]+$/, "").replace(/_/g, " ") : "Untitled Document";
+
   return {
-    contract_title: data.contract_title || fileName.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
-    contract_type: data.contract_type || "Commercial Agreement",
-    parties: Array.isArray(data.parties) && data.parties.length > 0 ? data.parties : ["Primary Party", "Counterparty"],
-    start_date: data.start_date || new Date().toISOString().split('T')[0],
-    expiry_date: data.expiry_date || new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
-    renewal_date: data.renewal_date || new Date(Date.now() + 335 * 86400000).toISOString().split('T')[0],
-    renewal_type: data.renewal_type || "Auto-Renew (30-day notice)",
-    notice_period_days: data.notice_period_days !== undefined && data.notice_period_days !== null ? data.notice_period_days : 30,
-    contract_value: data.contract_value || 50000,
-    currency: data.currency || "USD",
-    payment_terms: data.payment_terms || "Net 30 Days",
-    termination_clause: data.termination_clause || "Either party may terminate upon 30 days written notice prior to contract expiration.",
-    key_obligations: Array.isArray(data.key_obligations) && data.key_obligations.length > 0 ? data.key_obligations : [
-      { party: "Provider", description: "Deliver services in accordance with agreed specifications." },
-      { party: "Client", description: "Remit payment within payment terms." }
-    ],
-    risks: Array.isArray(data.risks) && data.risks.length > 0 ? data.risks : [
-      {
-        title: "Auto-Renewal Notice Window",
-        description: "Contract automatically renews unless non-renewal notice is delivered within notice period.",
-        severity: "Medium",
-        evidence: "Notice must be delivered prior to renewal date."
-      }
-    ],
-    risk_level: data.risk_level || "Medium",
+    contract_title: data.contract_title || cleanName,
+    contract_type: data.contract_type || "General Agreement",
+    parties: Array.isArray(data.parties) ? data.parties.filter(Boolean) : [],
+    start_date: data.start_date || null,
+    expiry_date: data.expiry_date || null,
+    renewal_date: data.renewal_date || null,
+    renewal_type: data.renewal_type || null,
+    notice_period_days: (typeof data.notice_period_days === 'number' && !isNaN(data.notice_period_days)) ? data.notice_period_days : null,
+    contract_value: (typeof data.contract_value === 'number' && !isNaN(data.contract_value)) ? data.contract_value : null,
+    currency: data.currency || null,
+    payment_terms: data.payment_terms || null,
+    termination_clause: data.termination_clause || null,
+    key_obligations: Array.isArray(data.key_obligations) ? data.key_obligations : [],
+    risks: Array.isArray(data.risks) ? data.risks : [],
+    risk_level: data.risk_level || (Array.isArray(data.risks) && data.risks.some(r => r.severity === 'Critical' || r.severity === 'High') ? "High" : "Low"),
     important_dates: Array.isArray(data.important_dates) ? data.important_dates : [],
-    summary: data.summary || `Extracted analysis for document ${fileName}. Contract defines standard commercial obligations, payment terms, and notice windows.`,
+    summary: data.summary || `Extracted document analysis for ${cleanName}.`,
     evidence: Array.isArray(data.evidence) ? data.evidence : []
   };
 };
 
 const generateIntelligentFallbackAnalysis = (text, fileName) => {
-  const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
-  const futureExpiry = new Date();
-  futureExpiry.setFullYear(futureExpiry.getFullYear() + 1);
+  const cleanName = fileName ? fileName.replace(/\.[^/.]+$/, "").replace(/_/g, " ") : "Untitled Document";
+  const lowerText = (text || '').toLowerCase();
 
-  const futureRenewal = new Date(futureExpiry);
-  futureRenewal.setDate(futureRenewal.getDate() - 30);
+  // Contract Type detection
+  let contractType = "General Agreement";
+  if (lowerText.includes("saas") || lowerText.includes("software license")) contractType = "Software License";
+  else if (lowerText.includes("lease") || lowerText.includes("rent")) contractType = "Real Estate Lease";
+  else if (lowerText.includes("services agreement") || lowerText.includes("sow")) contractType = "Professional Services";
+  else if (lowerText.includes("nda") || lowerText.includes("confidentiality")) contractType = "Non-Disclosure Agreement";
+  else if (lowerText.includes("vendor") || lowerText.includes("supplier")) contractType = "Vendor Agreement";
+  else if (lowerText.includes("employment")) contractType = "Employment Agreement";
+
+  // Parties extraction from text
+  const parties = [];
+  const betweenMatch = text ? text.match(/by and between\s+([\w\s,]+?)\s+and\s+([\w\s,]+?)(?=\.|\n|,|is entered)/i) : null;
+  if (betweenMatch) {
+    if (betweenMatch[1]?.trim()) parties.push(betweenMatch[1].trim());
+    if (betweenMatch[2]?.trim()) parties.push(betweenMatch[2].trim());
+  }
+
+  // Monetary value & currency detection
+  let contractValue = null;
+  let currency = null;
+  const valueMatch = text ? text.match(/(?:\$|USD|INR|EUR|GBP|Rs\.?)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/i) : null;
+  if (valueMatch) {
+    const rawVal = valueMatch[1].replace(/,/g, '');
+    const num = parseFloat(rawVal);
+    if (!isNaN(num) && num > 0) {
+      contractValue = num;
+      if (text.includes("INR") || text.includes("Rs")) currency = "INR";
+      else if (text.includes("EUR") || text.includes("€")) currency = "EUR";
+      else if (text.includes("GBP") || text.includes("£")) currency = "GBP";
+      else currency = "USD";
+    }
+  }
+
+  // Notice Period Days
+  let noticePeriodDays = null;
+  const noticeMatch = text ? text.match(/(\d+)\s*(?:days?|day)\s*(?:written)?\s*notice/i) : null;
+  if (noticeMatch) {
+    const days = parseInt(noticeMatch[1], 10);
+    if (!isNaN(days)) noticePeriodDays = days;
+  }
+
+  // Payment Terms
+  let paymentTerms = null;
+  const payMatch = text ? text.match(/(net\s*\d+|\d+\s*days\s*from\s*invoice)/i) : null;
+  if (payMatch) {
+    paymentTerms = payMatch[1];
+  }
+
+  // Expiry / Start Date detection (Regex match for YYYY-MM-DD or MM/DD/YYYY)
+  let startDate = null;
+  let expiryDate = null;
+  const dateMatches = text ? text.match(/\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})\b/g) : null;
+  if (dateMatches && dateMatches.length > 0) {
+    startDate = dateMatches[0];
+    if (dateMatches.length > 1) {
+      expiryDate = dateMatches[1];
+    }
+  }
+
+  // Risk detection
+  const risks = [];
+  if (lowerText.includes("uncapped liability") || lowerText.includes("unlimited liability")) {
+    risks.push({
+      title: "Unlimited Liability Risk",
+      description: "Document specifies uncapped or unlimited liability terms.",
+      severity: "High",
+      evidence: "Unlimited liability text found in document."
+    });
+  }
+  if (lowerText.includes("auto-renew") || lowerText.includes("automatic renewal")) {
+    risks.push({
+      title: "Automatic Renewal Clause",
+      description: "Contract renews automatically unless written notice is provided.",
+      severity: "Medium",
+      evidence: "Automatic renewal clause detected in text."
+    });
+  }
+
+  const riskLevel = risks.some(r => r.severity === 'High') ? "High" : risks.length > 0 ? "Medium" : "Low";
 
   return {
-    contract_title: cleanName.toUpperCase().includes("AGREEMENT") ? cleanName : `${cleanName} Master Agreement`,
-    contract_type: cleanName.toLowerCase().includes("saas") ? "Software License" :
-                   cleanName.toLowerCase().includes("lease") ? "Real Estate Lease" :
-                   cleanName.toLowerCase().includes("services") ? "Professional Services" : "Vendor Agreement",
-    parties: ["Acme Digital Solutions", "Counterparty Enterprise Solutions"],
-    start_date: new Date().toISOString().split('T')[0],
-    expiry_date: futureExpiry.toISOString().split('T')[0],
-    renewal_date: futureRenewal.toISOString().split('T')[0],
-    renewal_type: "Auto-Renew (30-day notice)",
-    notice_period_days: 30,
-    contract_value: 75000,
-    currency: "USD",
-    payment_terms: "Net 30 Days from invoice date",
-    termination_clause: "Either party may terminate upon 30 days written notice prior to annual renewal date.",
-    key_obligations: [
-      { party: "Acme Digital Solutions", description: "Provide timely access to required systems and clear monthly invoices." },
-      { party: "Counterparty Enterprise Solutions", description: "Deliver contract scope according to service level terms." }
-    ],
-    risks: [
-      {
-        title: "Auto-Renewal & Notice Period Deadline",
-        description: "Requires written notice 30 days prior to expiry date to prevent automatic annual extension.",
-        severity: "Medium",
-        evidence: "Written notice of non-renewal must be submitted at least 30 days prior to contract expiration."
-      },
-      {
-        title: "Standard Limitation of Liability Cap",
-        description: "Liability is limited to fees paid under this agreement in the preceding 12 months.",
-        severity: "Low",
-        evidence: "Total aggregate liability shall not exceed the fees paid in the prior 12-month period."
-      }
-    ],
-    risk_level: "Medium",
-    important_dates: [
-      { event: "Notice Deadline", date: futureRenewal.toISOString().split('T')[0], description: "Last day to send non-renewal notice" },
-      { event: "Contract Expiration", date: futureExpiry.toISOString().split('T')[0], description: "Official expiration date" }
-    ],
-    summary: `Structured AI analysis completed for ${cleanName}. Document establishes commercial payment terms, 30-day notice requirement, and standard liability terms.`,
-    evidence: [
-      { field: "Expiry Date", value: futureExpiry.toISOString().split('T')[0], evidenceQuote: "Agreement shall remain in effect for 12 months." },
-      { field: "Notice Period", value: "30 days", evidenceQuote: "30 days advance written notice required for non-renewal." }
-    ]
+    contract_title: cleanName,
+    contract_type: contractType,
+    parties,
+    start_date: startDate,
+    expiry_date: expiryDate,
+    renewal_date: null,
+    renewal_type: lowerText.includes("auto") ? "Auto-Renewal" : null,
+    notice_period_days: noticePeriodDays,
+    contract_value: contractValue,
+    currency,
+    payment_terms: paymentTerms,
+    termination_clause: lowerText.includes("terminate") ? "Termination clause detected in document text." : null,
+    key_obligations: [],
+    risks,
+    risk_level: riskLevel,
+    important_dates: [],
+    summary: `Analysis performed for document ${cleanName}.`,
+    evidence: []
   };
 };
 

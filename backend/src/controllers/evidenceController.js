@@ -15,13 +15,7 @@ exports.getEvidenceExplorer = async (req, res, next) => {
     const evidenceList = [];
 
     contracts.forEach(contract => {
-      const items = (contract.aiEvidence && contract.aiEvidence.length > 0)
-        ? contract.aiEvidence
-        : [
-            { field: 'Expiry Date', value: contract.expiryDate ? new Date(contract.expiryDate).toISOString().split('T')[0] : 'N/A', evidenceQuote: 'This agreement shall terminate 12 months from effective date.' },
-            { field: 'Notice Period', value: `${contract.noticePeriodDays || 30} days`, evidenceQuote: '30 days advance written notice required prior to renewal.' },
-            { field: 'Payment Terms', value: contract.paymentTerms || 'Net 30', evidenceQuote: 'Invoices shall be paid within 30 days of receipt.' }
-          ];
+      const items = Array.isArray(contract.aiEvidence) ? contract.aiEvidence : [];
 
       items.forEach(item => {
         evidenceList.push({

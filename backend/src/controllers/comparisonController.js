@@ -77,33 +77,54 @@ exports.compareContracts = async (req, res, next) => {
     }
 
     if (!comparisonResult) {
+      const dateChanges = [];
+      const paymentChanges = [];
+      const modifiedClauses = [];
+
+      const valA_exp = contractA.expiryDate ? new Date(contractA.expiryDate).toISOString().split('T')[0] : 'Not specified';
+      const valB_exp = contractB.expiryDate ? new Date(contractB.expiryDate).toISOString().split('T')[0] : 'Not specified';
+      if (valA_exp !== valB_exp) {
+        dateChanges.push({ field: 'Expiry Date', valA: valA_exp, valB: valB_exp });
+      }
+
+      const valA_notice = contractA.noticePeriodDays !== null && contractA.noticePeriodDays !== undefined ? `${contractA.noticePeriodDays} days` : 'Not specified';
+      const valB_notice = contractB.noticePeriodDays !== null && contractB.noticePeriodDays !== undefined ? `${contractB.noticePeriodDays} days` : 'Not specified';
+      if (valA_notice !== valB_notice) {
+        modifiedClauses.push({
+          title: 'Notice Period',
+          originalText: `Contract A notice: ${valA_notice}`,
+          newText: `Contract B notice: ${valB_notice}`,
+          diffSummary: 'Notice period requirement differs between contracts.'
+        });
+      }
+
+      const valA_value = contractA.contractValue !== null && contractA.contractValue !== undefined ? `${contractA.currency || '$'}${contractA.contractValue}` : 'Not specified';
+      const valB_value = contractB.contractValue !== null && contractB.contractValue !== undefined ? `${contractB.currency || '$'}${contractB.contractValue}` : 'Not specified';
+      if (valA_value !== valB_value) {
+        paymentChanges.push({ field: 'Contract Value', valA: valA_value, valB: valB_value });
+      }
+
+      const valA_pay = contractA.paymentTerms || 'Not specified';
+      const valB_pay = contractB.paymentTerms || 'Not specified';
+      if (valA_pay !== valB_pay) {
+        paymentChanges.push({ field: 'Payment Terms', valA: valA_pay, valB: valB_pay });
+      }
+
+      const scoreA = contractA.riskLevel === 'Critical' ? 90 : contractA.riskLevel === 'High' ? 75 : contractA.riskLevel === 'Medium' ? 50 : 25;
+      const scoreB = contractB.riskLevel === 'Critical' ? 90 : contractB.riskLevel === 'High' ? 75 : contractB.riskLevel === 'Medium' ? 50 : 25;
+
       comparisonResult = {
-        addedClauses: [
-          { title: 'Data Security & SLA Compliance', text: 'Contract B adds explicit SLA reporting and encryption requirements.', impact: 'Lowers Security Risk' }
-        ],
-        removedClauses: [
-          { title: 'Uncapped Liability Exception', text: 'Contract A contained uncapped indemnification.', impact: 'Lowers Liability Risk' }
-        ],
-        modifiedClauses: [
-          {
-            title: 'Notice Period Window',
-            originalText: `${contractA.noticePeriodDays || 30} days notice required.`,
-            newText: `${contractB.noticePeriodDays || 60} days notice required.`,
-            diffSummary: 'Notice window increased, requiring earlier renewal decisions.'
-          }
-        ],
-        dateChanges: [
-          { field: 'Expiry Date', valA: contractA.expiryDate ? new Date(contractA.expiryDate).toISOString().split('T')[0] : 'N/A', valB: contractB.expiryDate ? new Date(contractB.expiryDate).toISOString().split('T')[0] : 'N/A' }
-        ],
-        paymentChanges: [
-          { field: 'Contract Value', valA: `$${contractA.contractValue || 0}`, valB: `$${contractB.contractValue || 0}` }
-        ],
+        addedClauses: [],
+        removedClauses: [],
+        modifiedClauses,
+        dateChanges,
+        paymentChanges,
         riskDelta: {
-          scoreA: contractA.riskLevel === 'Critical' ? 90 : contractA.riskLevel === 'High' ? 75 : 45,
-          scoreB: contractB.riskLevel === 'Critical' ? 90 : contractB.riskLevel === 'High' ? 75 : 40,
-          summary: 'Contract B features improved liability caps and updated payment terms.'
+          scoreA,
+          scoreB,
+          summary: `Risk rating is ${contractA.riskLevel || 'Low'} for Contract A vs ${contractB.riskLevel || 'Low'} for Contract B.`
         },
-        aiSummary: `Comparison completed between ${contractA.contractTitle} and ${contractB.contractTitle}. Contract B introduces structured SLAs and updates notice requirements.`
+        aiSummary: `Comparison generated between ${contractA.contractTitle} and ${contractB.contractTitle}.`
       };
     }
 

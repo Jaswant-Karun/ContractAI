@@ -17,21 +17,21 @@ exports.getObligations = async (req, res, next) => {
     // Fallback: If database table has no rows yet, populate dynamically from Contract keyObligations
     if (obligations.length === 0) {
       const contracts = await Contract.find({ companyId, isArchived: { $ne: true } }).limit(10);
-      const createdItems = [];
 
       for (const contract of contracts) {
         if (Array.isArray(contract.keyObligations) && contract.keyObligations.length > 0) {
           for (const ob of contract.keyObligations) {
-            const item = await Obligation.create({
-              companyId,
-              contractId: contract._id,
-              title: ob.description || 'Deliver contracted SLA services',
-              party: ob.party || 'Vendor',
-              dueDate: contract.expiryDate || new Date(Date.now() + 30 * 86400000),
-              priority: contract.riskLevel === 'Critical' ? 'High' : 'Medium',
-              status: 'Pending'
-            });
-            createdItems.push(item);
+            if (ob.description && ob.description.trim()) {
+              await Obligation.create({
+                companyId,
+                contractId: contract._id,
+                title: ob.description.trim(),
+                party: ob.party || 'Counterparty',
+                dueDate: contract.expiryDate || new Date(Date.now() + 30 * 86400000),
+                priority: contract.riskLevel === 'Critical' ? 'High' : 'Medium',
+                status: 'Pending'
+              });
+            }
           }
         }
       }
